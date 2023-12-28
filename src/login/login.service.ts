@@ -4,6 +4,7 @@ import * as argon from 'argon2';
 import * as fs from 'fs';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { log } from 'console';
 interface userI {
   id?: number;
   login: string;
@@ -40,8 +41,11 @@ export class LoginService {
     try {
       let users = this.getAll();
       const hash = await argon.hash(dto.password);
+      let res = await this.validate(dto, 'new');
 
-      if ((this.validate(dto), 'new')) {
+      if (res) {
+        console.log('add');
+
         users.push({
           id: users[users.length - 1].id + 1,
           login: dto.login,
@@ -59,22 +63,28 @@ export class LoginService {
           ),
         };
       } else {
-        return false;
+        return { message: 'user with the same login exists' };
       }
     } catch (err) {
-      throw err;
+      return { error: err };
     }
   }
 
-  async validate(dto: userI, type = '') {
+  async validate(dto: userI, type) {
     let users = this.getAll();
 
     if (type == 'new') {
+      let valid = true;
+      console.log('my');
+
       users.forEach(({ login, password, id }) => {
         if (login === dto.login) {
-          return { message: 'user added' };
+          valid = false;
         }
       });
+      console.log(valid);
+
+      return valid;
     } else if (type == '') {
       console.log('a');
 
@@ -94,17 +104,20 @@ export class LoginService {
         return {
           accesToken: await this.signToken(usersFound[0].id + 1, dto.login),
         };
+      } else {
+        return {
+          err: 'invalid password',
+        };
       }
     }
   }
 
   signup(dto: userI) {
-    let res = this.write(dto);
-    return res;
+    return this.write(dto);
   }
 
   async signin(dto: userI) {
-    return await this.validate(dto);
+    return await this.validate(dto, '');
   }
   all() {
     return this.getAll();
